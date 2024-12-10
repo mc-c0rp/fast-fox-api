@@ -12,7 +12,7 @@ local_storage_value = '{"accessToken":"eyJhbGciOiJIUzI1NiIsImV4cCI6MTczMzk1MzQ0M
 
 def send_command(code: str, command: str, input_value: int = 0, count: int = 2):
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=False)
+        browser = p.chromium.launch(headless=True)
         context = browser.new_context()
 
         page = context.new_page()
@@ -66,6 +66,7 @@ def send_command(code: str, command: str, input_value: int = 0, count: int = 2):
         except Exception as e:
             print(f"Ошибка: {e}")
         finally:
+            print('successfull')
             page.close()
             browser.close()
             

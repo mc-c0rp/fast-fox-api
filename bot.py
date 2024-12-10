@@ -2,10 +2,14 @@ import telebot
 import fox
 import ai
 import re
- 
-VERSION = '0.1'
-LAST_PUBLIC_UPDATE = '09.12.24'
-UPDATES = ['<strong>0.1</strong> - Создание бота, добавлены команды <strong>/sport</strong>, <strong>/send</strong> и <strong>/whats_new</strong>.']
+import threading
+import time
+
+VERSION = '0.1.1'
+LAST_PUBLIC_UPDATE = '10.12.24'
+UPDATES = ['<strong>0.1</strong> - Создание бота, добавлены команды <strong>/sport</strong>,<strong>/commands</strong> , <strong>/send</strong> и <strong>/whats_new</strong>.']
+
+NOT_VERIF_TEXT = f"Я не могу найти тебя в моей базе, отправь запрос на <strong>добавление</strong> с помощью команды /verif."
 
 API_TOKEN = '7986878035:AAFLAcjK4G9sa428TNdLcx12iYn7wqGaD5A'  # Load token from environment variable
 
@@ -15,8 +19,23 @@ bot = telebot.TeleBot(API_TOKEN)
 # Use user_id as the key to ensure uniqueness and presence
 state = {}
 
+def check_permission(message):
+	user_id = message.chat.id
+	
+	with open("users.txt", 'r') as f:
+		users = f.read()
+	users.split("\n")
+	
+	if str(user_id) not in users:
+		return 0
+
 @bot.message_handler(commands=['start'])
-def start(message):
+def start(message: telebot.types.Message):
+    result = check_permission(message)
+    if result == 0:
+        bot.send_message(message.chat.id, f"Привет, <strong>{message.from_user.first_name}</strong>.\n{NOT_VERIF_TEXT}", parse_mode='HTML')
+        return
+    
     welcome_text = (
         f"Привет, <strong>{message.from_user.first_name}</strong>.\n"
         f"Здесь ты можешь управлять самокатами, впрочем, тоже самое что и в Атоме.\n"
@@ -24,8 +43,33 @@ def start(message):
     )
     bot.send_message(message.chat.id, welcome_text, parse_mode='HTML')
 
+@bot.message_handler(commands=['verif'])
+def verif(message: telebot.types.Message):
+    bot.send_message(message.chat.id, 'Запрос отправлен! Ожидай одобрения.')
+    bot.send_message(1729435753, f'Запрос на верефикицаю от пользователя:\n{message.from_user.first_name} {message.from_user.last_name}\n@{message.from_user.username} | <code>{message.from_user.id}</code>\n(одобрить можно через /verif_bot)', parse_mode='HTML')
+
+@bot.message_handler(commands=['verif_user'])
+def verif_user(message: telebot.types.Message):
+    id = int(message.text.replace('/verif_user ', ''))
+    with open("users.txt", 'w+') as f:
+        ff = f.read()
+        ff += f'\n{id}'
+        f.write(ff)
+    bot.send_message(message.chat.id, 'Успешно одобрено!')
+    bot.send_message(id, 'Твой запрос успешно одобрили!') 
+
+@bot.message_handler(commands=['id'])
+def id(message: telebot.types.Message):
+	bot.send_message(message.chat.id, f'{str(message.from_user.id)}\nchat-id: {str(message.chat.id)}')
+
 @bot.message_handler(commands=['whats_new'])
 def whats_new(message: telebot.types.Message):
+    result = check_permission(message)
+    if result == 0:
+        bot.send_message(message.chat.id, f"Привет, <strong>{message.from_user.first_name}</strong>.\n{NOT_VERIF_TEXT}", parse_mode='HTML')
+        return
+    
+	
     text = ''
     for line in UPDATES:
         text += f'{line}\n'
@@ -33,6 +77,11 @@ def whats_new(message: telebot.types.Message):
 
 @bot.message_handler(commands=['cancel'])
 def cancel(message: telebot.types.Message):
+    result = check_permission(message)
+    if result == 0:
+        bot.send_message(message.chat.id, f"Привет, <strong>{message.from_user.first_name}</strong>.\n{NOT_VERIF_TEXT}", parse_mode='HTML')
+        return
+    
     global state
     user_id = message.from_user.id
 
@@ -44,6 +93,11 @@ def cancel(message: telebot.types.Message):
 
 @bot.message_handler(commands=['sport'])
 def sport(message):
+    result = check_permission(message)
+    if result == 0:
+        bot.send_message(message.chat.id, f"Привет, <strong>{message.from_user.first_name}</strong>.\n{NOT_VERIF_TEXT}", parse_mode='HTML')
+        return
+    
     user_id = message.from_user.id
     welcome_text = (
         f"<strong>{message.from_user.first_name}</strong>, на какой самокат пиздануть спорт режим? (F0XXX)\n(Отправьте /cancel чтобы отменить.)"
@@ -58,6 +112,11 @@ def sport(message):
 
 @bot.message_handler(commands=['send'])
 def send(message):
+    result = check_permission(message)
+    if result == 0:
+        bot.send_message(message.chat.id, f"Привет, <strong>{message.from_user.first_name}</strong>.\n{NOT_VERIF_TEXT}", parse_mode='HTML')
+        return
+    
     user_id = message.from_user.id
     welcome_text = (
         f"<strong>{message.from_user.first_name}</strong>, на какой самокат отправить команду? (F0XXX)\n(Отправьте /cancel чтобы отменить.)"
@@ -72,6 +131,12 @@ def send(message):
 
 @bot.message_handler(commands=['commands'])
 def comm(message: telebot.types.Message):
+    result = check_permission(message)
+    if result == 0:
+        bot.send_message(message.chat.id, f"Привет, <strong>{message.from_user.first_name}</strong>.\n{NOT_VERIF_TEXT}", parse_mode='HTML')
+        return
+    
+		
     text = 'Доступные команды:\n'
     for index, command in enumerate(fox.COMMANDS):
         text += f'<strong>{index}</strong>. <code>{command}</code>.\n'
@@ -79,6 +144,12 @@ def comm(message: telebot.types.Message):
 
 @bot.message_handler(func=lambda message: True)
 def handle_message(message:telebot.types.Message):
+    result = check_permission(message)
+    if result == 0:
+        bot.send_message(message.chat.id, f"Привет, <strong>{message.from_user.first_name}</strong>.\n{NOT_VERIF_TEXT}", parse_mode='HTML')
+        return
+    
+		
     global state
     user_id = message.from_user.id
     user_state = state.get(user_id)
@@ -158,8 +229,20 @@ def handle_message(message:telebot.types.Message):
                             message_id=user_state["msg_id"],
                             parse_mode="HTML"
                         )   
+                        background_thread = threading.Thread(target=fox.send_command, args=(scooter, command, 0, 2))
+                        background_thread.start()
 
-                        fox.send_command(scooter, command, 0, 2)
+                        percent = 0.00
+                        for i in range(13):
+                            percent += 7.69
+                            bot.edit_message_text(
+                                f"<strong>Нейросеть</strong> определила команду {command} с уверенностью в {conf:.2f}, отправляю запрос в атом... ({percent:.1f}%)",
+                                chat_id=message.chat.id,
+                                message_id=user_state["msg_id"],
+                                parse_mode="HTML"
+                            ) 
+                            time.sleep(0.5)
+
                         bot.delete_message(message.chat.id, user_state['msg_id'])
                         bot.send_message(message.chat.id, f'<strong>{message.from_user.first_name}</strong>, команда {command} была успешно отправлена на {scooter}!', parse_mode='HTML')
                     else:
